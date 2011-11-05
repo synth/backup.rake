@@ -40,10 +40,10 @@ namespace('backup') do
         backup_assets.each do |asset|
           src = File.join(RAILS_ROOT, asset)
           dst = File.join(backup_dir, asset)
-          if test(?d, src) and test(?d, dst)
-            bak = dst + ".bak.#{ BACKUP_TIMESTAMP }"
-            FileUtils.mv(dst, bak)
-            FileUtils.cp_r(src, dst)
+          
+          if test(?d, src) 
+            FileUtils.mkdir_p(dst) #force the backup directory to be there
+            FileUtils.cp_r("#{src}/.", dst)#the directory itself will be created, need just the contents
             puts dst
           end
         end
@@ -88,12 +88,10 @@ namespace('backup') do
     # assets
       backup_assets.each do |asset|
         src = File.join(backup_dir, asset)
+        next unless test(?d, src)
         dst = File.join(RAILS_ROOT, asset)
-        if test(?d, dst)
-          bak = dst + ".bak.#{ BACKUP_TIMESTAMP }"
-          FileUtils.mv(dst, bak)
-        end
-        FileUtils.cp_r(src, dst)
+        FileUtils.mkdir_p(dst)
+        FileUtils.cp_r("#{src}/.", dst)
       end
     end
   end
@@ -112,7 +110,7 @@ namespace('backup') do
     require 'fileutils'
     require 'time'
 
-    BACKUP_TIMESTAMP = Time.now.iso8601(2).gsub(%r/[^\d]/,'')
+    BACKUP_TIMESTAMP = Time.now.to_formatted_s(:number).slice(0,8)
 
     def backup_assets
       @backup_assets ||= Array(ENV['BACKUP_ASSETS'] || ENV['ASSETS'] || %w( private public/system )).join(',').strip.split(%r/\s*,\s*/)
@@ -126,7 +124,7 @@ namespace('backup') do
       unless defined?(@backup_dir)
         @backup_dir = ENV['BACKUP_DIR'] || ENV['DIR'] || ENV['BACKUP']
         unless @backup_dir
-          @backup_dir = "#{ RAILS_ROOT }/backup/#{ RAILS_ENV }/#{ backup_name }/"
+          @backup_dir = "#{ RAILS_ROOT }/backups/#{ RAILS_ENV }/#{ backup_name }/"
         end
         FileUtils.mkdir_p(@backup_dir) unless test(?d, @backup_dir)
       end
